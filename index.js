@@ -2,30 +2,43 @@ const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
 require("dotenv").config();
-const path = require('path');
+const path = require("path");
 
 const app = express();
 
-// ✅ Allow all origins (for development or public use)
-app.use(cors());
+// ✅ Allow all origins by default — mostly affects GET
+app.use(cors({ methods: ["GET"] }));
 
-// Parse JSON request bodies
+// ✅ Parse JSON request bodies
 app.use(express.json());
 
-// Setup Nodemailer transporter
+// ✅ Nodemailer setup
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER,  // Your Gmail address
-    pass: process.env.EMAIL_PASS   // Gmail App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
-// POST endpoint to send emails
-app.post("/send-email", async (req, res) => {
+// ✅ CORS config only for POST /send-email
+const restrictedCors = cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = ["https://www.nayvohtech.com", "https://nayvohtech.com"];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS policy: This origin is not allowed"));
+    }
+  },
+  methods: ["POST"],
+  allowedHeaders: ["Content-Type"]
+});
+
+// ✅ POST route with restricted CORS
+app.post("/send-email", restrictedCors, async (req, res) => {
   const { name, email, phone, message } = req.body;
 
-  // Validate fields
   if (!name || !email || !phone || !message) {
     return res.status(400).json({ error: "All fields are required." });
   }
@@ -53,11 +66,11 @@ app.post("/send-email", async (req, res) => {
   }
 });
 
-// Optional test route
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html')); // Sending index.html file
-  });
+// ✅ GET route (open to all origins)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
-// Start the server
+// ✅ Start the server (locally)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
