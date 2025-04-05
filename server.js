@@ -4,38 +4,47 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
+
+// Allowed domains for POST requests
 const allowedOrigins = ["https://nayvohtech.com", "https://www.nayvohtech.com"];
 
-app.use(cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like Postman or curl)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS policy: This origin is not allowed"));
-      }
-    },
-    methods: ["POST", "GET"],
-    allowedHeaders: ["Content-Type"],
-  }));
+// General CORS middleware for GET — allow all origins
+const allowAllCORS = cors();
 
-// Parse JSON request bodies
+// Restricted CORS middleware for POST — only specific origins
+const restrictPostCORS = cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS policy: This origin is not allowed"));
+    }
+  },
+  methods: ["POST"],
+  allowedHeaders: ["Content-Type"],
+});
+
+// Middleware to parse JSON
 app.use(express.json());
 
 // Setup Nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER,  // Your Gmail address
-    pass: process.env.EMAIL_PASS   // Gmail App Password
-  }
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
-// POST endpoint to send emails
-app.post("/send-email", async (req, res) => {
+// ✅ GET route — allow all origins
+app.get("/", allowAllCORS, (req, res) => {
+  res.send("<h1>Contact backend is running!</h1>");
+});
+
+// ✅ POST route — restrict to specific origins
+app.post("/send-email", restrictPostCORS, async (req, res) => {
   const { name, email, phone, message } = req.body;
 
-  // Validate fields
   if (!name || !email || !phone || !message) {
     return res.status(400).json({ error: "All fields are required." });
   }
@@ -50,7 +59,7 @@ app.post("/send-email", async (req, res) => {
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Phone:</strong> ${phone}</p>
       <p><strong>Message:</strong><br>${message}</p>
-    `
+    `,
   };
 
   try {
@@ -61,11 +70,6 @@ app.post("/send-email", async (req, res) => {
     console.error("Email error:", err);
     res.status(500).json({ error: "Failed to send email." });
   }
-});
-
-// Optional test route
-app.get("/", (req, res) => {
-  res.send("<h1>Contact backend is running!</h1>");
 });
 
 // Start the server
