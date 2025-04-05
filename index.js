@@ -2,6 +2,7 @@ const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
 require("dotenv").config();
+const path = require('path');
 
 const app = express();
 
@@ -53,9 +54,9 @@ app.post("/send-email", async (req, res) => {
 });
 
 // Optional test route
-app.get("/", (req, res) => {
-  res.send("<h1>Contact backend is running yep!</h1>");
-});
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html')); // Sending index.html file
+  });
 
 // Start the server
 const PORT = process.env.PORT || 5000;
