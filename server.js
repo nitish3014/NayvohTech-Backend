@@ -1,40 +1,30 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 
-// CORS configs
-const allowedOrigins = ["https://nayvohtech.com", "https://www.nayvohtech.com"];
-const allowAllCORS = cors();
-const restrictPostCORS = cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS policy: This origin is not allowed"));
-    }
-  },
-  methods: ["POST"],
-  allowedHeaders: ["Content-Type"]
-});
+// ✅ Allow all origins (for development or public use)
+app.use(cors());
 
+// Parse JSON request bodies
 app.use(express.json());
 
+// Setup Nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+    user: process.env.EMAIL_USER,  // Your Gmail address
+    pass: process.env.EMAIL_PASS   // Gmail App Password
+  }
 });
 
-app.get("/", allowAllCORS, (req, res) => {
-  res.send("Contact backend is running on Vercel!");
-});
-
-app.post("/send-email", restrictPostCORS, async (req, res) => {
+// POST endpoint to send emails
+app.post("/send-email", async (req, res) => {
   const { name, email, phone, message } = req.body;
+
+  // Validate fields
   if (!name || !email || !phone || !message) {
     return res.status(400).json({ error: "All fields are required." });
   }
@@ -44,10 +34,11 @@ app.post("/send-email", restrictPostCORS, async (req, res) => {
     to: process.env.EMAIL_RECEIVER,
     subject: "New Contact Form Submission",
     html: `
+      <h2>New Contact Form Submission</h2>
       <p><strong>Name:</strong> ${name}</p>
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Phone:</strong> ${phone}</p>
-      <p><strong>Message:</strong> ${message}</p>
+      <p><strong>Message:</strong><br>${message}</p>
     `
   };
 
@@ -61,11 +52,11 @@ app.post("/send-email", restrictPostCORS, async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== "vercel") {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
-  }
-// Vercel handler export
-const serverless = require("serverless-http");
-module.exports = serverless(app);
+// Optional test route
+app.get("/", (req, res) => {
+  res.send("<h1>Contact backend is running yep!</h1>");
+});
 
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
