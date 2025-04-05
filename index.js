@@ -6,26 +6,40 @@ const path = require('path');
 
 const app = express();
 
-// ✅ Allow all origins (for development or public use)
-app.use(cors());
+// ✅ CORS Setup
+const allowedOrigins = ["https://nayvohtech.com", "https://www.nayvohtech.com"];
 
-// Parse JSON request bodies
+const corsForPost = cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS policy: This origin is not allowed"));
+    }
+  },
+  methods: ["POST"],
+  allowedHeaders: ["Content-Type"],
+});
+
+// ✅ Allow all origins for GET globally
+app.use(cors({ methods: ["GET"] }));
+
+// Parse JSON bodies
 app.use(express.json());
 
-// Setup Nodemailer transporter
+// Nodemailer transporter setup
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL_USER,  // Your Gmail address
-    pass: process.env.EMAIL_PASS   // Gmail App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
-// POST endpoint to send emails
-app.post("/send-email", async (req, res) => {
+// ✅ POST endpoint with restricted CORS
+app.post("/send-email", corsForPost, async (req, res) => {
   const { name, email, phone, message } = req.body;
 
-  // Validate fields
   if (!name || !email || !phone || !message) {
     return res.status(400).json({ error: "All fields are required." });
   }
@@ -53,11 +67,17 @@ app.post("/send-email", async (req, res) => {
   }
 });
 
-// Optional test route
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html')); // Sending index.html file
-  });
+// ✅ GET endpoint accessible from any origin
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
-// Start the server
+// Start server locally
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+if (process.env.NODE_ENV !== "vercel") {
+  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+}
+
+// ✅ For Vercel
+const serverless = require("serverless-http");
+module.exports = serverless(app);
